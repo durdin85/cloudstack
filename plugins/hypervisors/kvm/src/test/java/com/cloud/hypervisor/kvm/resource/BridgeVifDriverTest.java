@@ -19,6 +19,8 @@ package com.cloud.hypervisor.kvm.resource;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import javax.naming.ConfigurationException;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -99,5 +101,43 @@ public class BridgeVifDriverTest {
         nic.setBroadcastUri(new URI(Networks.BroadcastDomainType.Storage.scheme() + "://untagged"));
         String result = driver.createStorageVnetBridgeIfNeeded(nic, "trafficLabel", BRIDGE_NAME);
         Assert.assertEquals(BRIDGE_NAME, result);
+    }
+
+    @Test
+    public void isPortIsolationVlanOnlyMatchesGuestNicsOnConfiguredVlans() throws ConfigurationException {
+        driver.configurePortIsolationVlans("100, 200", 6001000L);
+        NicTO nic = new NicTO();
+        nic.setType(Networks.TrafficType.Guest);
+        Assert.assertTrue(driver.isPortIsolationVlan(nic, "100", "vlan"));
+        Assert.assertTrue(driver.isPortIsolationVlan(nic, "200", "vlan"));
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "300", "vlan"));
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "100", "vxlan"));
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, null, null));
+        nic.setType(Networks.TrafficType.Public);
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "100", "vlan"));
+    }
+
+    @Test
+    public void isPortIsolationVlanMatchesTrafficLabelWhenEntryHasOne() throws ConfigurationException {
+        driver.configurePortIsolationVlans("cloudbr1:100", 6001000L);
+        NicTO nic = new NicTO();
+        nic.setType(Networks.TrafficType.Guest);
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "100", "vlan"));
+        nic.setName("cloudbr2");
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "100", "vlan"));
+        nic.setName("cloudbr1");
+        Assert.assertTrue(driver.isPortIsolationVlan(nic, "100", "vlan"));
+        Assert.assertFalse(driver.isPortIsolationVlan(nic, "200", "vlan"));
+    }
+
+    @Test
+    public void configurePortIsolationVlansAcceptsEmptyValueOnOldLibvirt() throws ConfigurationException {
+        driver.configurePortIsolationVlans(null, 6000000L);
+        driver.configurePortIsolationVlans(" ", 6000000L);
+    }
+
+    @Test(expected = ConfigurationException.class)
+    public void configurePortIsolationVlansRejectsOldLibvirt() throws ConfigurationException {
+        driver.configurePortIsolationVlans("100", 6000000L);
     }
 }

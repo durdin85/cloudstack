@@ -21,8 +21,10 @@ package com.cloud.hypervisor.kvm.resource;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,6 +53,8 @@ public class BridgeVifDriver extends VifDriverBase {
     private String _macIpScriptPath;
     private String _controlCidr = NetUtils.getLinkLocalCIDR();
     private Long libvirtVersion;
+    private static final long MIN_LIBVIRT_VERSION_FOR_PORT_ISOLATION = 6001000L;
+    private final Set<String> portIsolationVlans = new HashSet<>();
 
     private static boolean isVxlanOrNetris(String protocol) {
         return protocol.equals(Networks.BroadcastDomainType.Vxlan.scheme()) || protocol.equals(Networks.BroadcastDomainType.Netris.scheme());
@@ -96,6 +100,34 @@ public class BridgeVifDriver extends VifDriverBase {
         if (libvirtVersion == null) {
             libvirtVersion = 0L;
         }
+
+        configurePortIsolationVlans(AgentPropertiesFileHandler.getPropertyValue(AgentProperties.NETWORK_BRIDGE_PORT_ISOLATION_VLANS), libvirtVersion);
+    }
+
+    protected void configurePortIsolationVlans(String vlans, long libvirtVersion) throws ConfigurationException {
+        portIsolationVlans.clear();
+        for (String vlan : StringUtils.split(StringUtils.defaultString(vlans), ',')) {
+            if (StringUtils.isNotBlank(vlan)) {
+                portIsolationVlans.add(vlan.trim());
+            }
+        }
+        if (!portIsolationVlans.isEmpty() && libvirtVersion < MIN_LIBVIRT_VERSION_FOR_PORT_ISOLATION) {
+            throw new ConfigurationException(String.format("%s requires libvirt 6.1.0 or newer, which supports isolated bridge ports",
+                    AgentProperties.NETWORK_BRIDGE_PORT_ISOLATION_VLANS.getName()));
+        }
+        logger.info("Guest VLANs with isolated bridge ports: {}", portIsolationVlans);
+    }
+
+    /**
+     * Matches entries of the form "vlan" (any physical network) or "label:vlan", where label is the KVM traffic
+     * label of the guest physical network, or the default guest bridge when the network has no traffic label.
+     */
+    protected boolean isPortIsolationVlan(NicTO nic, String vNetId, String protocol) {
+        if (nic.getType() != Networks.TrafficType.Guest || !Networks.BroadcastDomainType.Vlan.scheme().equals(protocol)) {
+            return false;
+        }
+        String label = StringUtils.isNotBlank(nic.getName()) || _bridges == null ? nic.getName() : _bridges.get("guest");
+        return portIsolationVlans.contains(vNetId) || portIsolationVlans.contains(label + ":" + vNetId);
     }
 
     public void getPifs() {
@@ -294,6 +326,7 @@ public class BridgeVifDriver extends VifDriverBase {
             intf.setPxeDisable(true);
         }
         intf.setLinkStateUp(nic.isEnabled());
+        intf.setPortIsolated(isPortIsolationVlan(nic, vNetId, protocol));
 
         executeMacIpScript(intf.getBrName(), nic.getMac(), nic.getIp(), nic.getIp6Address(), nic.getNicSecIps());
 

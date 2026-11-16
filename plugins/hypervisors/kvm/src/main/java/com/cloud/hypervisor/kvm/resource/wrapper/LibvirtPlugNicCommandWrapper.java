@@ -76,6 +76,7 @@ public final class LibvirtPlugNicCommandWrapper extends CommandWrapper<PlugNicCo
             }
             final VifDriver vifDriver = libvirtComputingResource.getVifDriver(nic.getType(), nic.getName());
             final InterfaceDef interfaceDef = vifDriver.plug(nic, "Other PV", "", null);
+            libvirtComputingResource.disablePortIsolationForSystemVm(interfaceDef, vmType);
             if (command.getDetails() != null) {
                 libvirtComputingResource.setInterfaceDefQueueSettings(command.getDetails(), null, interfaceDef);
             }

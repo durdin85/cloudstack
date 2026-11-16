@@ -4136,12 +4136,22 @@ public class LibvirtComputingResource extends ServerResourceBase implements Serv
         }
     }
 
+    /**
+     * System VMs (e.g. the virtual router) must stay reachable from the isolated ports of user VMs.
+     */
+    public void disablePortIsolationForSystemVm(final InterfaceDef interfaceDef, final VirtualMachine.Type vmType) {
+        if (vmType != null && vmType.isUsedBySystem()) {
+            interfaceDef.setPortIsolated(false);
+        }
+    }
+
     private void createVif(final LibvirtVMDef vm, final VirtualMachineTO vmSpec, final NicTO nic, final String nicAdapter, Map<String, String> extraConfig) throws InternalErrorException, LibvirtException {
         if (vm.getDevices() == null) {
             LOGGER.error("LibvirtVMDef object get devices with null result");
             throw new InternalErrorException("LibvirtVMDef object get devices with null result");
         }
         final InterfaceDef interfaceDef = getVifDriver(nic.getType(), nic.getName()).plug(nic, vm.getPlatformEmulator(), nicAdapter, extraConfig);
+        disablePortIsolationForSystemVm(interfaceDef, vmSpec.getType());
         if (vmSpec.getDetails() != null) {
             setInterfaceDefQueueSettings(vmSpec.getDetails(), vmSpec.getCpus(), interfaceDef);
         }

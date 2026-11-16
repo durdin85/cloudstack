@@ -320,6 +320,18 @@ public class AgentProperties{
     public static final Property<String> NETWORK_BRIDGE_TYPE = new Property<>("network.bridge.type", "native");
 
     /**
+     * Comma-separated list of guest VLANs whose user VM NICs are plugged as isolated bridge ports,
+     * so that they can only reach non-isolated ports (the uplink and system VMs) and not each other.<br>
+     * An entry is either a VLAN ID, matching that VLAN on any guest physical network, or
+     * <code>label:vlan</code>, matching it only on the physical network with that KVM traffic label
+     * (the default guest bridge for networks without a traffic label). Example: <code>cloudbr1:100,200</code><br>
+     * Only used when network.bridge.type is native. Requires libvirt 6.1.0 or newer.<br>
+     * Data type: String.<br>
+     * Default value: <code>null</code>
+     */
+    public static final Property<String> NETWORK_BRIDGE_PORT_ISOLATION_VLANS = new Property<>("network.bridge.port.isolation.vlans", null, String.class);
+
+    /**
      * Sets the VXLAN networking mode used by the BridgeVifDriver.<br>
      * Possible values: multicast | evpn <br>
      * When set to <code>evpn</code>, the driver will use modifyvxlan-evpn.sh instead of modifyvxlan.sh.<br>
