@@ -1650,6 +1650,7 @@ public class LibvirtVMDef {
         private int _vlanTag = -1;
         private boolean _pxeDisable = false;
         private boolean _linkStateUp = true;
+        private boolean _portIsolated = false;
         private Integer _slot;
         private String _dpdkSourcePath;
         private String _dpdkSourcePort;
@@ -1824,6 +1825,18 @@ public class LibvirtVMDef {
             return _linkStateUp;
         }
 
+        /**
+         * Isolates the NIC's bridge port: it can only exchange traffic with non-isolated ports of the bridge.
+         * Only applies to interfaces of type bridge and requires libvirt 6.1.0 or newer.
+         */
+        public void setPortIsolated(boolean portIsolated) {
+            _portIsolated = portIsolated;
+        }
+
+        public boolean isPortIsolated() {
+            return _portIsolated;
+        }
+
         public String getDpdkSourcePort() {
             return _dpdkSourcePort;
         }
@@ -1921,6 +1934,10 @@ public class LibvirtVMDef {
 
             if (_netType != GuestNetType.VHOSTUSER && _netType != GuestNetType.USER) {
                 netBuilder.append("<link state='" + (_linkStateUp ? "up" : "down") +"'/>\n");
+            }
+
+            if (_portIsolated && _netType == GuestNetType.BRIDGE) {
+                netBuilder.append("<port isolated='yes'/>\n");
             }
 
             if (_slot  != null) {

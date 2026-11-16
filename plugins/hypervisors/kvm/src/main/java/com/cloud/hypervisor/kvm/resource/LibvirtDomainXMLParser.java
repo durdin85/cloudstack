@@ -279,6 +279,8 @@ public class LibvirtDomainXMLParser {
                     def.setPackedVirtQueues("on".equalsIgnoreCase(packedOn));
                 }
 
+                def.setPortIsolated("yes".equalsIgnoreCase(getAttrValue("port", "isolated", nic)));
+
                 if (StringUtils.isNotBlank(slot)) {
                     def.setSlot(Integer.parseInt(slot, 16));
                 }

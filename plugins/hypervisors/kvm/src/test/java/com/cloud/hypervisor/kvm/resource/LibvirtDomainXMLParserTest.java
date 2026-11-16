@@ -154,6 +154,7 @@ public class LibvirtDomainXMLParserTest extends TestCase {
                      "<mac address='06:c5:94:00:05:65'/>" +
                      "<source bridge='cloudbr1'/>" +
                      "<target dev='vnet1'/>" +
+                     "<port isolated='yes'/>" +
                      "<model type='" + ifModel.toString() + "'/>" +
                      "<alias name='net1'/>" +
                      "<address type='pci' domain='0x0000' bus='0x00' slot='0x04' function='0x0'/>" +
@@ -254,6 +255,7 @@ public class LibvirtDomainXMLParserTest extends TestCase {
             assertEquals(ifType, ifs.get(i).getNetType());
             assertEquals(Integer.valueOf(i + 3), ifs.get(i).getSlot());
             assertEquals("vnet" + i, ifs.get(i).getDevName());
+            assertEquals(i == 1, ifs.get(i).isPortIsolated());
         }
 
         MemBalloonDef memBalloon = parser.getMemBalloon();
